@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Sesuaikan dengan database yang digunakan
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  avatar    String
+  role      String   @default("user") // Menambahkan peran pengguna (admin/user)
+  tasks     Task[]
+  projects  Project[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  status      String   @default("ongoing") // Menambahkan status proyek
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User @relation(fields: [userId], references: [id], onDelete: Cascade) // Cascade delete jika user dihapus
+  userId      String
+}
+
+model Task {
+  id         String   @id @default(uuid())
+  title      String
+  description String?
+  status     String   @default("onprogress")
+  dueDate    DateTime?
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade) // Cascade delete jika user dihapus
+  userId     String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade) // Cascade delete jika project dihapus
+  projectId  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
