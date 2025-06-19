@@ -1,4 +1,8 @@
 const UserValidation = require("../validations/auth");
+const bcrypt = require('bcrypt');
+const { body, validationResult } = require('express-validator');
+const prisma = require('../utils/prismaClient');
+
 const Auth = require("../models/auth");
 const JwtHelper = require("../utils/jwtHelper");
 
