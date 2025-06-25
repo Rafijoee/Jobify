@@ -6,6 +6,8 @@ const express = require('express');
 const router = require('./routes/index');
 const morgan = require('morgan');
 const cors = require('cors');
+require('./utils/passport'); 
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -15,7 +17,10 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use(router);
+app.use('/api/', router);
+
 const server = app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    const serverUrl = `http://localhost:${PORT}`;
+    console.log(`Server berjalan di: ${serverUrl}/api/`);
 });
+

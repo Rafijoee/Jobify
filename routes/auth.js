@@ -1,15 +1,21 @@
+// src/routes/auth.js
 const express = require('express');
+const { body } = require('express-validator');
+const passport = require('passport');
 const router = express.Router();
-const AuthController = require('../controllers/auth');
-const multer = require('../utils/multer');
-const middlewares = require('../middlewares/restrict');
+const authController = require('../controllers/auth');
 
-router.post('/register', multer.single('avatar'),  AuthController.register,);
-router.post('/login', AuthController.login);
-router.put('/change-password', middlewares.user, AuthController.changePassword);
-router.put('/change-profile',multer.single('avatar'), middlewares.user, AuthController.changeProfile);
-router.delete('/delete-account/:id',middlewares.admin,  AuthController.delete);
-router.get('/users',middlewares.admin, AuthController.getAllUser);
-router.get('/user/:id',middlewares.admin, AuthController.getById);
+const { registerValidation, loginValidation } = require('../validators/authValidator');
+router.post('/register', registerValidation, authController.register);
+router.post('/verify-otp', authController.verifyOtp);
+router.post('/login', loginValidation, authController.login);
+router.get('/google', authController.googleLogin);
+router.get('/google/callback',
+  passport.authenticate('google', {
+    failureRedirect: '/login',
+    session: false
+  }),
+  authController.googleCallback
+);
 
 module.exports = router;

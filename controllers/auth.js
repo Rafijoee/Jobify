@@ -1,149 +1,150 @@
-const UserValidation = require("../validations/auth");
+// src/controllers/auth.js
 const bcrypt = require('bcrypt');
 const { body, validationResult } = require('express-validator');
 const prisma = require('../utils/prismaClient');
+const { sendOtpEmail } = require('../utils/emailHelper');
+const { signToken } = require('../utils/jwtHelper');
+const passport = require('passport');
+const crypto = require('crypto');
 
-const Auth = require("../models/auth");
-const JwtHelper = require("../utils/jwtHelper");
-
-module.exports = {
-  login: async (req, res, next) => {
-    try {
-      UserValidation.login(req.body);
-      const { email, password } = req.body;      
-      const user = await Auth.login(email, password);
-      const accessToken = JwtHelper.generateToken(user);
-      return res.status(200).json({
-        status: "Success",
-        statusCode: 200,
-        message: "Login berhasil.",
-        data: {
-          user,
-          accessToken,
-        },
-      });
-    } catch (err) {
-      const statusCode = err.statusCode || 500; 
-      return res.status(statusCode).json({
-        status: "Failed",
-        statusCode,
-        message: err.message || "Terjadi kesalahan saat login. Silakan coba lagi.",
-      });
-    }
-  },
-  register: async (req, res, next) => {
-    try {
-      await UserValidation.register(req.body, req.file);
-      const data = await Auth.register(req.body, req.file);
-      return res.status(201).json({
-        status: "Success",
-        statusCode: 201,
-        message: "Registrasi berhasil",
-        data: {
-          user: {
-            id: data.id,
-            name: data.name,
-            email: data.email,
-            noHp: data.noHp,
-            nim: data.nim,
-          },
-        },
-      });
-    } catch (err) {
-      const statusCode = err.statusCode || 500; 
-      return res.status(statusCode).json({
-        status: "Failed",
-        statusCode,
-        message: err.message || "Terjadi kesalahan saat login. Silakan coba lagi.",
-      });
-    }
-  },
-  changePassword: async (req, res, next) => {
-    try {
-      await UserValidation.changePassword(req.body);
-      const data = await Auth.changePassword(req.user.id, req.body);
-      return res.status(201).json({
-        status: "Success",
-        statusCode: 200,
-        message: "Kata sandi berhasil diubah.",
-        data: data,
-      });
-    } catch (err) {
-      return res.status(500).json({
-        status: "Failed",
-        statusCode: 500,
-        message: "Terjadi kesalahan saat mengubah kata sandi. Silakan coba lagi.",
-      });
-    }
-  },
-  delete : async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      await Auth.deleted(id);
-      return res.status(200).json({
-        status: "Success",
-        statusCode: 200,
-        message: "User berhasil dihapus.",
-      });
-    } catch (err) {
-      return res.status(500).json({
-        status: "Failed",
-        statusCode: 500,
-        message: "Terjadi kesalahan saat menghapus user. Silakan coba lagi.",
-      });
-    }
-  },
-  getAllUser : async (req, res, next) => {
-    try {
-      const data = await Auth.getAll();
-      return res.status(200).json({
-        status: "Success",
-        statusCode: 200,
-        message: "Data semua user berhasil didapatkan.",
-        data,
-      });
-    } catch (err) {
-      return res.status(500).json({
-        status: "Failed",
-        statusCode: 500,
-        message: "Terjadi kesalahan saat mengambil data user. Silakan coba lagi.",
-      });
-    }
-  },
-  getById : async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const data = await Auth.getById(id);
-      return res.status(200).json({
-        status: "Success",
-        statusCode: 200,
-        message: "Data user berhasil didapatkan.",
-        data,
-      });
-    } catch (err) {
-      return res.status(500).json({
-        status: "Failed",
-        statusCode: 500,
-        message: "Terjadi kesalahan saat mengambil data user. Silakan coba lagi.",
-      });
-    }
-  },
-  changeProfile : async (req, res, next) => {
-    try {
-      await UserValidation.changeProfile(req.file);
-      const data = await Auth.changeProfile(req.user.id, req.file);
-      return res.status(201).json({
-        status: "Success",
-        statusCode: 200,
-        message: "Profil berhasil diubah.",
-        data: data,
-      });
-    } catch (err) {
-      return res.status(500).json({
-        status: "Failed",
-        statusCode: 500,
-        message: "Terjadi kesalahan saat mengubah profil. Silakan coba lagi.",
-      });
-    }
-  },
+const generateOtp = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit string
 };
+
+// ====== POST /api/auth/register ======
+exports.register = async (req, res) => {
+  // Validasi input (gunakan express-validator di route)
+  console.log(require('express-validator'));
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { email, password } = req.body;
+
+  try {
+    // Cek apakah email sudah terdaftar
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return res.status(400).json({ message: 'Email sudah terdaftar.' });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    // Generate OTP & expiration (10 menit dari sekarang)
+    const otpCode = generateOtp();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+    // Simpan user dengan field OTP
+    const newUser = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        isVerified: false,
+        otpCode,
+        otpExpires,
+      },
+    });
+
+    // Kirim email OTP
+    await sendOtpEmail(email, otpCode);
+
+    res.status(201).json({
+      message: 'Registrasi berhasil. Cek email untuk OTP verifikasi.',
+      userId: newUser.id,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+// ====== POST /api/auth/verify-otp ======
+exports.verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ message: 'Email dan OTP dibutuhkan.' });
+  }
+
+  try {
+    // Cari user berdasarkan email & otpCode
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(400).json({ message: 'User tidak ditemukan.' });
+    }
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'Akun sudah terverifikasi.' });
+    }
+    if (user.otpCode !== otp) {
+      return res.status(400).json({ message: 'OTP tidak valid.' });
+    }
+    if (user.otpExpires < new Date()) {
+      return res.status(400).json({ message: 'OTP sudah kadaluarsa.' });
+    }
+
+    // Update isVerified dan bersihkan OTP
+    await prisma.user.update({
+      where: { email },
+      data: {
+        isVerified: true,
+        otpCode: null,
+        otpExpires: null,
+      },
+    });
+
+    res.json({ message: 'Verifikasi berhasil. Silakan login.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+// ====== POST /api/auth/login ======
+exports.login = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    // Cari user
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(400).json({ message: 'Email atau password salah.' });
+    }
+    if (!user.isVerified) {
+      return res.status(400).json({ message: 'Akun belum diverifikasi.' });
+    }
+    if (!user.password) {
+      return res.status(400).json({ message: 'Akun ini hanya bisa login via Google.' });
+    }
+
+    // Bandingkan password
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      return res.status(400).json({ message: 'Email atau password salah.' });
+    }
+
+    // Buat JWT
+    const token = signToken({ id: user.id, email: user.email });
+    res.json({ token, email: user.email });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+// ====== GET /api/auth/google/callback ======
+// Fungsi ini di‐trigger setelah Passport berhasil autentikasi
+exports.googleCallback = (req, res) => {
+  // req.user sudah di‐isi oleh Passport (user dari DB)
+  const user = req.user;
+  // Buat JWT untuk user
+  const token = signToken({ id: user.id, email: user.email });
+  // Redirect ke front-end (React) dengan membawa token
+  return res.redirect(`${process.env.BASE_URL}/oauth-callback?token=${token}`);
+};
+
+// ====== GET /api/auth/google-login ======
+// Fungsi ini diarahkan ke Passport untuk redirect ke Google
+exports.googleLogin = passport.authenticate('google', {
+  scope: ['profile', 'email'],
+  session: false
+
+});
