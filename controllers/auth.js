@@ -138,13 +138,14 @@ exports.googleCallback = (req, res) => {
   // Buat JWT untuk user
   const token = signToken({ id: user.id, email: user.email });
   // Redirect ke front-end (React) dengan membawa token
-  return res.redirect(`${process.env.BASE_URL}/oauth-callback?token=${token}`);
+  return res.redirect(`${process.env.BASE_URL}/api/?token=${token}`);
 };
 
 // ====== GET /api/auth/google-login ======
 // Fungsi ini diarahkan ke Passport untuk redirect ke Google
-exports.googleLogin = passport.authenticate('google', {
-  scope: ['profile', 'email'],
-  session: false
-
-});
+exports.googleLogin = (req, res, next) => {
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    session: false
+  })(req, res, next);
+};
