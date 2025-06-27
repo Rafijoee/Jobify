@@ -14,13 +14,13 @@ const generateOtp = () => {
 // ====== POST /api/auth/register ======
 exports.register = async (req, res) => {
   // Validasi input (gunakan express-validator di route)
-  console.log(require('express-validator'));
+  console.log(require('express-validator') + ' ini log express validator');
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, password } = req.body;
+  const { email, password, name } = req.body;
 
   try {
     // Cek apakah email sudah terdaftar
@@ -36,25 +36,32 @@ exports.register = async (req, res) => {
     const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
 
     // Simpan user dengan field OTP
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        isVerified: false,
-        otpCode,
-        otpExpires,
-      },
-    });
+    const newUser = await prisma.$transaction(async (tx) => {
+      // Simpan user
+      const createdUser = await tx.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name,
+          isVerified: false,
+          otpCode,
+          otpExpires,
+        },
+      });
 
-    // Kirim email OTP
-    await sendOtpEmail(email, otpCode);
+      // Kirim email — jika gagal, akan throw error dan rollback user create
+      await sendOtpEmail(email, otpCode);
+
+      return createdUser;
+    });
 
     res.status(201).json({
       message: 'Registrasi berhasil. Cek email untuk OTP verifikasi.',
       userId: newUser.id,
+      otpCode: otpCode, // Hanya untuk testing, jangan kirim ke client di production
     });
   } catch (err) {
-    console.error(err);
+    console.error(err, 'ini errornya di controller auth.js');
     res.status(500).json({ message: 'Server error.' });
   }
 };
@@ -98,6 +105,41 @@ exports.verifyOtp = async (req, res) => {
     res.status(500).json({ message: 'Server error.' });
   }
 };
+// ====== POST /api/auth/resend-otp ======
+
+exports.resendOtp = async (req, res) => {
+  const { email } = req.body;
+  try {
+  if (!email) {
+    return res.status(400).json({ message: 'Email dibutuhkan.' });
+  }
+  const otpCode = generateOtp();
+  const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+  const newUser = await prisma.$transaction(async (tx) => {
+    // Simpan user
+    const createdUser = await tx.user.update({
+      where: { email },
+      data: {
+        otpCode,
+        otpExpires,
+      },
+    });
+
+    // Kirim email — jika gagal, akan throw error dan rollback user create
+    const test = await sendOtpEmail(email, otpCode);
+    console.log(test, 'ini test email');
+    return createdUser;
+  });
+  res.status(200).json({
+    message: 'OTP baru telah dikirim ke email Anda.',
+    userId: newUser.id,
+    otpCode: otpCode, // Hanya untuk testing, jangan kirim ke client di production
+  });
+} catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error.' });
+  }
+}
 
 // ====== POST /api/auth/login ======
 exports.login = async (req, res) => {
@@ -111,17 +153,12 @@ exports.login = async (req, res) => {
     if (!user.isVerified) {
       return res.status(400).json({ message: 'Akun belum diverifikasi.' });
     }
-    if (!user.password) {
-      return res.status(400).json({ message: 'Akun ini hanya bisa login via Google.' });
-    }
 
-    // Bandingkan password
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       return res.status(400).json({ message: 'Email atau password salah.' });
     }
 
-    // Buat JWT
     const token = signToken({ id: user.id, email: user.email });
     res.json({ token, email: user.email });
   } catch (err) {
@@ -149,3 +186,4 @@ exports.googleLogin = (req, res, next) => {
     session: false
   })(req, res, next);
 };
+

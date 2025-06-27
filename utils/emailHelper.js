@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+require('dns').setDefaultResultOrder('ipv4first');
+
 
 const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
@@ -29,8 +31,9 @@ const sendOtpEmail = async (toEmail, otpCode) => {
   return info;
 };
 
+
 module.exports = {
-    sendOtpEmail
+    sendOtpEmail,
 };
 // const transporter = require('../configs/mailer');
 
