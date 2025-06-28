@@ -13,23 +13,26 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        const { id, displayName, emails } = profile;
+        const { id, displayName, emails, photos } = profile;
         const email = emails?.[0]?.value || null;
+        const photoUrl = photos?.[0]?.value || null;
         const name = displayName || "No Name";
         const hashedPassword = await bcrypt.hash("password", 10);
-
         const user = await prisma.user.upsert({
           where: { email },
           update: {
             googleId: id,
             name: name,
             isVerified: true,
+            photoUrl: photoUrl,
           },
           create: {
             googleId: id,
             email,
             name: name,
             isVerified: true,
+            photoUrl: photoUrl,
+            phoneNumber: null, // Set default phone number for Google login
             password: hashedPassword, // Set default password for Google login
           },
         });
