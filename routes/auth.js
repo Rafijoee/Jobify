@@ -1,6 +1,5 @@
 // src/routes/auth.js
 const express = require("express");
-const { body } = require("express-validator");
 const passport = require("passport");
 const router = express.Router();
 const authController = require("../controllers/auth");

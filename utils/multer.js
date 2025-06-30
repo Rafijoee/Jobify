@@ -1,6 +1,6 @@
 const multer = require("multer");
 
-const fileFilter = (req, file, cb) => {
+const photoProfileFilter = (req, file, cb) => {
     const allowedMimes = ["image/jpeg", "image/png", "image/gif"];
 
     if (allowedMimes.includes(file.mimetype)) {
@@ -15,7 +15,7 @@ const uploadAvatar = multer({
     limits: {
         fileSize: 5 * 1024 * 1024, // 5MB limit
     },
-    fileFilter: fileFilter,
+    fileFilter: photoProfileFilter,
 });
 
 module.exports = uploadAvatar;
