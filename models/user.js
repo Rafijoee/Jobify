@@ -95,7 +95,17 @@ class User {
       throw new Error("Gagal mendapatkan profil.", 500);
     }
   }
-      
+  static async findByEmail(email) {
+    try {
+      return await prisma.user.findUnique({
+        where: {
+          email: email,
+        },
+      });
+    } catch (error) {
+      throw new Error("Gagal menemukan user dengan email tersebut.", 500);
+    }
+  }
 }
 
 module.exports = User;

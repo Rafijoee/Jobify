@@ -1,5 +1,8 @@
 const User = require("../models/user");
-const { get } = require("../routes");
+const { sendOtpEmail } = require("../utils/emailHelper");
+const prisma = require('../utils/prismaClient');
+const bcrypt = require('bcrypt');
+
 
 module.exports = {
   changeProfile: async (req, res, next) => {
@@ -111,5 +114,137 @@ module.exports = {
   forgotPassword: async (req, res, next) => {
     try {
       const { email } = req.body;
-      
+      const user = await User.findByEmail(email);
+      if (!user) {
+        return res.status(404).json({
+          status: "Failed",
+          statusCode: 404,
+          message: "User tidak ditemukan.",
+        });
+      }
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+      const newUser = await prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.update({
+          where: { email },
+          data: {
+            otpCode,
+            otpExpires,
+          },
+        });
+
+        await sendOtpEmail(email, otpCode);
+        res.status(201).json({
+          status: "Success",
+          statusCode: 201,
+          message: "OTP berhasil dikirim ke email Anda.",
+          data: {
+            email: createdUser.email,
+          },
+        });
+        return createdUser;
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({
+        status: "Failed",
+        statusCode: 500,
+        message: "Terjadi kesalahan saat mengirim OTP. Silakan coba lagi.",
+      });
+    }
+  },
+  verifyResetOtp: async (req, res, next) => {
+    try {
+      const { email, otp } = req.body;
+      if (!email || !otp) {
+        return res.status(400).json({ message: 'Email dan OTP dibutuhkan.' });
+      }
+      const user = await User.findByEmail(email);
+      if (!user) {
+        return res.status(404).json({
+          status: "Failed",
+          statusCode: 404,
+          message: "User tidak ditemukan.",
+        });
+      }
+      if (user.otpCode !== otp) {
+        return res.status(400).json({
+          status: "Failed",
+          statusCode: 400,
+          message: "OTP tidak valid.",
+        });
+      }
+      if (user.otpExpires < new Date()) {
+        return res.status(400).json({
+          status: "Failed",
+          statusCode: 400,
+          message: "OTP sudah kadaluarsa.",
+        });
+      }
+      await prisma.user.update({
+        where: { email },
+        data: { canResetPassword: true }, 
+      });
+      return res.status(200).json({
+        status: "Success",
+        statusCode: 200,
+        message: "Verifikasi OTP berhasil. Silakan reset password.",
+      });
+    }catch (err) {
+      console.error(err);
+      return res.status(500).json({
+        status: "Failed",
+        statusCode: 500,
+        message: "Terjadi kesalahan saat memverifikasi OTP. Silakan coba lagi.",
+      });
+    }
+  },
+  resetPassword: async (req, res, next) => {
+    try {
+      const { email, newPassword } = req.body;
+      if (!email || !newPassword) {
+        return res.status(400).json({ message: 'Email dan password baru dibutuhkan.' });
+      }
+      const user = await User.findByEmail(email);
+      if (!user) {
+        return res.status(404).json({
+          status: "Failed",
+          statusCode: 404,
+          message: "User tidak ditemukan.",
+        });
+      }
+      if (!user.canResetPassword) {
+        return res.status(400).json({
+          status: "Failed",
+          statusCode: 400,
+          message: "Anda tidak dapat mereset password saat ini.",
+        });
+      }
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await prisma.user.update({
+        where: { email },
+        data: {
+          password: hashedPassword,
+          canResetPassword: false, // Reset status setelah reset password
+        },
+      });
+      return res.status(200).json({
+        status: "Success",
+        statusCode: 200,
+        message: "Password berhasil direset. Silakan login dengan password baru.",
+        data: {
+          email,
+        },
+      });
+    }
+    catch (err) {
+      console.error(err);
+      return res.status(500).json({
+        status: "Failed",
+        statusCode: 500,
+        message: "Terjadi kesalahan saat mereset password. Silakan coba lagi.",
+      });
+    }
+  }
 };

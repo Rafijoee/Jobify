@@ -45,6 +45,10 @@ exports.register = async (req, res) => {
 
       await sendOtpEmail(email, otpCode);
 
+      res.status(201).json({
+        message: 'Registrasi berhasil. Cek email untuk OTP verifikasi.',
+        userId: createdUser.id,
+      });
       return createdUser;
     });
 

@@ -23,9 +23,21 @@ const forgotPasswordValidation = [
   body('email')
     .isEmail().withMessage('Email tidak valid'),
 ];
+const otp = [
+  body('otp')
+    .notEmpty().withMessage('OTP wajib diisi')
+    .isNumeric().withMessage('OTP harus berupa angka'),
+]
+const resetPasswordValidation = [
+  body('newPassword')
+    .notEmpty().withMessage('Password baru wajib diisi')
+    .isLength({ min: 6 }).withMessage('Password baru minimal 6 karakter'),
+];
 
 module.exports = {
   userValidation,
   changePasswordValidation,
   forgotPasswordValidation,
+  otp,
+  resetPasswordValidation,
 }

@@ -16,5 +16,8 @@ router.put('/change-password',Validation.changePasswordValidation, middlewares.a
 router.get('/profile', middlewares.allUser, userController.getProfile);
 router.get('/users/:id', middlewares.admin, userController.getUserById);
 router.get('/users', middlewares.admin, userController.getAllUsers);
-// router.post('forgot-password',Validation.forgotPasswordValidation, userController.forgotPassword);
+router.post('/forgot-password', Validation.forgotPasswordValidation, userController.forgotPassword);
+router.post('/verify-reset-otp',Validation.otp, userController.verifyResetOtp);
+router.post('/reset-password',Validation.resetPasswordValidation, userController.resetPassword);
+
 module.exports = router;
