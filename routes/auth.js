@@ -7,7 +7,7 @@ const authController = require("../controllers/auth");
 const {
   registerValidation,
   loginValidation,
-} = require("../validators/authValidator");
+} = require("../validators/auth");
 router.post("/register", registerValidation, authController.register);
 router.post("/verify-otp", authController.verifyOtp);
 router.post("/login", loginValidation, authController.login);

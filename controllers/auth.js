@@ -1,6 +1,5 @@
 // src/controllers/auth.js
 const bcrypt = require('bcrypt');
-const { body, validationResult } = require('express-validator');
 const prisma = require('../utils/prismaClient');
 const { sendOtpEmail } = require('../utils/emailHelper');
 const { signToken } = require('../utils/jwtHelper');
@@ -14,11 +13,6 @@ const generateOtp = () => {
 // ====== POST /api/auth/register ======
 exports.register = async (req, res) => {
   // Validasi input (gunakan express-validator di route)
-  console.log(require('express-validator') + ' ini log express validator');
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
 
   const { email, password, name } = req.body;
 
@@ -49,7 +43,6 @@ exports.register = async (req, res) => {
         },
       });
 
-      // Kirim email — jika gagal, akan throw error dan rollback user create
       await sendOtpEmail(email, otpCode);
 
       return createdUser;

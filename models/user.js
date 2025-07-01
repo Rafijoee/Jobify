@@ -35,8 +35,11 @@ class User {
     }
   }
 
-  static async changePassword(id, { oldPassword, newPassword }) {
+  static async changePassword(id, {oldPassword, newPassword} ) {
     try {
+      if (oldPassword === newPassword) {
+        throw new Error("Kata sandi baru tidak boleh sama dengan kata sandi lama.", 400);
+      }
       const user = await prisma.user.findUnique({
         where: {
           id: id,
@@ -56,6 +59,7 @@ class User {
       });
       return updatedUser;
     } catch (error) {
+      console.error(error);
       throw new Error("Gagal mengubah kata sandi.", 500);
     }
   }
@@ -71,16 +75,27 @@ class User {
       throw new Error("Gagal menghapus user.", 500);
     }
   }
-  static async getAll() {
-    const users = await prisma.user.findMany({
-      where: {
-        role: {
-          not: "admin",
+  static async getAll(skip, limit) {
+    return await prisma.user.findMany({
+        skip,
+        take: limit,
+      });
+    }
+    static async countAll() {
+      return await prisma.user.count();
+    }
+  static async getProfile(id) {
+    try {
+      return await prisma.user.findUnique({
+        where: {
+          id: id,
         },
-      },
-    });
-    return users;
+      });
+    } catch (error) {
+      throw new Error("Gagal mendapatkan profil.", 500);
+    }
   }
+      
 }
 
 module.exports = User;

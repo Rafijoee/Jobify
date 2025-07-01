@@ -12,6 +12,20 @@ const userValidation = [
     .optional()
     .isMobilePhone('id-ID').withMessage('Nomor telepon tidak valid'),
 ];
+const changePasswordValidation = [
+  body('oldPassword')
+    .notEmpty().withMessage('Password lama wajib diisi'),
+  body('newPassword')
+    .notEmpty().withMessage('Password baru wajib diisi')
+    .isLength({ min: 6 }).withMessage('Password baru minimal 6 karakter'),
+];
+const forgotPasswordValidation = [
+  body('email')
+    .isEmail().withMessage('Email tidak valid'),
+];
+
 module.exports = {
   userValidation,
+  changePasswordValidation,
+  forgotPasswordValidation,
 }
