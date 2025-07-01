@@ -3,11 +3,15 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const bcrypt = require("bcrypt");
 const imagekit = require("../utils/imageKit");
+const { uploadAvatar } = require("../utils/uploads/avatar");
 
 class User {
   static async changeProfile(id, file) {
     try {
       let avatar = null;
+      if (!file) {
+        throw new Error("Avatar wajib diisi.", 400);
+      }
       if (file) {
         const uploadImageKit = await imagekit.upload({
           file: file.buffer.toString("base64"),
@@ -21,13 +25,13 @@ class User {
           id: id,
         },
         data: {
-          avatar: avatar,
+          photoUrl: avatar,
         },
       });
       return updatedUser;
     } catch (error) {
       console.log(error, "ini error di model");
-      throw new Error('Gagal mengubah foto profil.', 500);
+      throw new Error("Gagal mengubah foto profil.", 500);
     }
   }
 
@@ -39,7 +43,7 @@ class User {
         },
       });
       if (!user || !(await bcrypt.compare(oldPassword, user.password))) {
-        throw new Error('Password lama yang Anda masukkan salah.', 401);
+        throw new Error("Password lama yang Anda masukkan salah.", 401);
       }
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       const updatedUser = await prisma.user.update({
@@ -51,12 +55,11 @@ class User {
         },
       });
       return updatedUser;
-
-    }catch (error) {
-      throw new Error('Gagal mengubah kata sandi.', 500);
+    } catch (error) {
+      throw new Error("Gagal mengubah kata sandi.", 500);
     }
   }
-  static async deleted (id) {
+  static async deleted(id) {
     try {
       const user = await prisma.user.delete({
         where: {
@@ -65,45 +68,19 @@ class User {
       });
       return user;
     } catch (error) {
-      throw new Error('Gagal menghapus user.', 500);
+      throw new Error("Gagal menghapus user.", 500);
     }
   }
   static async getAll() {
     const users = await prisma.user.findMany({
       where: {
         role: {
-          not: 'admin'
-        }
-      }
+          not: "admin",
+        },
+      },
     });
     return users;
   }
-  static async getById(id) { 
-    try{
-
-      const user = await prisma.user.findUnique({
-        where: { id: id },
-        include: {
-          tasks: {
-            include: { project: true } 
-          }
-        }
-      });
-      return user;
-    }catch (error) {
-      console.log(error, "ini error di model");
-      throw new Error('Gagal mengambil data user.', 500);
-    }
-  }
-  static async findByEmail(email) {
-    const user = await prisma.user.findUnique({
-      where: {
-        email: email,
-      },
-    });
-    return user;
-  }
-
 }
 
 module.exports = User;

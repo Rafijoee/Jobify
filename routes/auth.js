@@ -15,7 +15,6 @@ router.post("/resend-otp", authController.resendOtp);
 router.get(
   "/google",
   (req, res, next) => {
-    console.log("🔵 Route /google hit");
     next();
   },
   authController.googleLogin
@@ -24,7 +23,6 @@ router.get(
 router.get(
   "/google/callback",
   (req, res, next) => {
-    console.log("🟢 Route /google/callback hit");
     next();
   },
   passport.authenticate("google", {

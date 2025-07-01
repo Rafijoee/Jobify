@@ -13,7 +13,8 @@ model User {
   name         String
   photoUrl     String?
   phoneNumber  String? @unique
-  password     String  
+  password     String
+  role         String   @default("user")   
   googleId    String? @unique
   isVerified   Boolean  @default(false)
   otpCode      String?  

@@ -159,7 +159,7 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Email atau password salah.' });
     }
 
-    const token = signToken({ id: user.id, email: user.email });
+    const token = signToken({ id: user.id, email: user.email, role : user.role });
     res.json({ token, email: user.email });
   } catch (err) {
     console.error(err);
@@ -173,7 +173,7 @@ exports.googleCallback = (req, res) => {
   // req.user sudah di‐isi oleh Passport (user dari DB)
   const user = req.user;
   // Buat JWT untuk user
-  const token = signToken({ id: user.id, email: user.email });
+  const token = signToken({ id: user.id, email: user.email, role : user.role });
   // Redirect ke front-end (React) dengan membawa token
   return res.redirect(`${process.env.BASE_URL}/api/?token=${token}`);
 };
