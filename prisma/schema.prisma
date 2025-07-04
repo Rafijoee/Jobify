@@ -23,3 +23,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+model Chat {
+  userId  String @id @default(uuid())
+  user    User   @relation(fields: [User], references: [id])
+  messages String @default("[]") // Store messages as a JSON string
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt  
+}
