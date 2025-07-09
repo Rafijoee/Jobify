@@ -5,7 +5,9 @@ if (process.env.NODE_ENV !== 'production') {
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
-const passport = require('passport'); // <= import dulu
+const passport = require('passport'); 
+const socketInit = require('./socket');
+
 
 require('./utils/passport'); // <= wajib load strategi Passport
 
