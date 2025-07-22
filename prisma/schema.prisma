@@ -22,12 +22,16 @@ model User {
   otpExpires   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  messagesSent Message[] @relation("FromUser")
+  messagesReceived Message[] @relation("ToUser")
 }
 
-model Chat {
-  userId  String @id @default(uuid())
-  user    User   @relation(fields: [User], references: [id])
-  messages String @default("[]") // Store messages as a JSON string
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt  
+model Message {
+  id         Int      @id @default(autoincrement())
+  fromUserId String
+  toUserId   String
+  content    String
+  createdAt  DateTime @default(now())
+  fromUser   User     @relation("FromUser", fields: [fromUserId], references: [id])
+  toUser     User     @relation("ToUser", fields: [toUserId], references: [id])
 }
